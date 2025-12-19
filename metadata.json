@@ -1,0 +1,9 @@
+{
+  "name": "Equipe HV Manutenções",
+  "description": "Sistema especializado de gestão de manutenção de alta voltagem para as calhas dos rios Solimões, Japurá e Juruá no Amazonas.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
