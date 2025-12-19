@@ -1,4 +1,3 @@
-
 import { Region, Municipality, ServiceType, MaintenanceNature, MaintenanceStatus, MaintenanceRecord } from './types';
 
 export const AMAZONAS_MUNICIPALITIES: Municipality[] = [
@@ -38,17 +37,15 @@ export const INITIAL_RECORDS: MaintenanceRecord[] = [
         id: 'stg1',
         name: 'Antes (Estado Inicial)',
         description: 'Verificação inicial do transformador TX-01 antes da limpeza e reaperto. Presença de fuligem nos isoladores.',
-        images: [
-          { id: 'img-init-1', data: 'https://picsum.photos/400/300?random=1' }
-        ]
+        // Fixed: Use beforeImage property instead of the non-existent images array to match MaintenanceStage interface
+        beforeImage: { id: 'img-init-1', data: 'https://picsum.photos/400/300?random=1' }
       },
       {
         id: 'stg2',
         name: 'Durante (Execução)',
         description: 'Realizado reaperto de conexões e limpeza química dos barramentos.',
-        images: [
-          { id: 'img-exec-1', data: 'https://picsum.photos/400/300?random=2' }
-        ]
+        // Fixed: Use duringImage property instead of the non-existent images array to match MaintenanceStage interface
+        duringImage: { id: 'img-exec-1', data: 'https://picsum.photos/400/300?random=2' }
       }
     ],
     technician: 'João Silva'

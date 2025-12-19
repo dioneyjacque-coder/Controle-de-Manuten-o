@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { MaintenanceRecord, Municipality } from '../types';
 
@@ -34,7 +33,8 @@ export const exportToExcel = (records: MaintenanceRecord[], municipalities: Muni
         'Local': mun?.name,
         'Etapa': stage.name,
         'Descrição da Etapa': stage.description,
-        'Qtd Fotos': stage.images.length
+        // Fixed: Count the individual optional image properties since 'images' array does not exist in MaintenanceStage
+        'Qtd Fotos': [stage.beforeImage, stage.duringImage, stage.afterImage].filter(Boolean).length
       });
     });
   });

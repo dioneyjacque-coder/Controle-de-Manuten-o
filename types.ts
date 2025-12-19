@@ -39,7 +39,9 @@ export interface MaintenanceStage {
   id: string;
   name: string; // ex: 'Antes', 'Durante', 'Depois', 'Limpeza TX'
   description: string; // Descrição técnica específica desta etapa
-  images: MaintenanceImage[];
+  beforeImage?: MaintenanceImage;
+  duringImage?: MaintenanceImage;
+  afterImage?: MaintenanceImage;
 }
 
 export interface MaintenanceRecord {
