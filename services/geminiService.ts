@@ -25,6 +25,32 @@ export const analyzeMaintenanceImage = async (base64Image: string, description: 
   return response.text;
 };
 
+export const generateImageWithAI = async (prompt: string) => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        {
+          text: `Crie uma imagem técnica de alta qualidade para um relatório de manutenção elétrica: ${prompt}. Estilo: Foto realista, iluminação de campo, detalhado.`,
+        },
+      ],
+    },
+    config: {
+      imageConfig: {
+        aspectRatio: "16:9"
+      }
+    }
+  });
+
+  for (const part of response.candidates[0].content.parts) {
+    if (part.inlineData) {
+      return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    }
+  }
+  throw new Error("Nenhuma imagem gerada pela IA");
+};
+
 export const generateSupervisorSummary = async (records: any[]) => {
   const ai = getAI();
   const summaryPrompt = `Gere um resumo executivo profissional para um supervisor de manutenção. 
@@ -39,20 +65,5 @@ export const generateSupervisorSummary = async (records: any[]) => {
     }
   });
 
-  return response.text;
-};
-
-export const chatWithAssistant = async (message: string, context: string) => {
-  const ai = getAI();
-  const chat = ai.chats.create({
-    model: 'gemini-3-pro-preview',
-    config: {
-      systemInstruction: `Você é o assistente virtual do "Amazonas Maintenance Pro". 
-      Você ajuda técnicos de campo a organizar manutenções nas calhas dos rios Solimões, Japurá e Juruá. 
-      Seja profissional, direto e conheça a geografia básica do Amazonas. Contexto atual: ${context}`
-    }
-  });
-
-  const response = await chat.sendMessage({ message });
   return response.text;
 };

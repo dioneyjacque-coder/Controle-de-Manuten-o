@@ -78,6 +78,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCopy = (record: MaintenanceRecord) => {
+    const newRecord: MaintenanceRecord = {
+      ...record,
+      id: 'rec-' + Date.now(),
+      date: new Date().toISOString().split('T')[0],
+      status: MaintenanceStatus.PENDING,
+      title: `${record.title} (Cópia)`
+    };
+    setRecords(prev => [newRecord, ...prev]);
+    alert('Registro copiado com sucesso! Você pode encontrá-lo como pendente.');
+  };
+
   const handleGenerateSummary = async () => {
     setLoadingSummary(true);
     try {
@@ -182,6 +194,9 @@ const App: React.FC = () => {
             </button>
             <button onClick={() => handlePPTXExport([record])} className="text-slate-300 hover:text-red-600 p-2 transition-colors" title="Exportar PowerPoint">
               <i className="fas fa-file-powerpoint"></i>
+            </button>
+            <button onClick={() => handleCopy(record)} className="text-slate-300 hover:text-blue-500 p-2 transition-colors" title="Copiar Relatório">
+              <i className="fas fa-clone"></i>
             </button>
           </div>
           <button onClick={() => { setEditingRecord(record); setView('form'); }} className="bg-orange-600 text-white px-8 py-3 rounded-2xl text-xs font-black hover:bg-orange-700 transition-all shadow-lg active:scale-95">
@@ -372,7 +387,7 @@ const App: React.FC = () => {
               <div className="bg-slate-950 p-12 text-white flex flex-col md:flex-row md:items-center justify-between gap-8">
                 <h3 className="text-3xl font-black tracking-tight">Lista de Atividades</h3>
                 <div className="flex items-center space-x-4">
-                  <div className="text-right"><p className="text-[10px] font-black text-slate-500 uppercase">Exportação Individual</p><p className="text-xs font-bold text-white/70">Clique no ícone PPTX</p></div>
+                  <div className="text-right"><p className="text-[10px] font-black text-slate-500 uppercase">Ações Rápidas</p><p className="text-xs font-bold text-white/70">Clique nos ícones para gerenciar</p></div>
                   <div className="bg-red-600/20 text-red-500 w-14 h-14 rounded-2xl flex items-center justify-center border border-red-500/30"><i className="fas fa-file-powerpoint text-xl"></i></div>
                 </div>
               </div>
@@ -399,8 +414,9 @@ const App: React.FC = () => {
                           <td className="py-6 pr-6 text-right">
                              <div className="flex items-center justify-end space-x-3">
                                 <button onClick={() => handlePPTXExport([r])} className="p-3 text-slate-300 hover:text-red-600 rounded-2xl transition-all" title="PPTX Individual"><i className="fas fa-file-powerpoint"></i></button>
-                                <button onClick={() => { setEditingRecord(r); setView('form'); }} className="p-3 text-slate-300 hover:text-orange-600 rounded-2xl transition-all"><i className="fas fa-edit"></i></button>
-                                <button onClick={() => handleDelete(r.id)} className="p-3 text-slate-300 hover:text-red-500 rounded-2xl transition-all"><i className="fas fa-trash-alt"></i></button>
+                                <button onClick={() => handleCopy(r)} className="p-3 text-slate-300 hover:text-blue-500 rounded-2xl transition-all" title="Copiar Relatório"><i className="fas fa-clone"></i></button>
+                                <button onClick={() => { setEditingRecord(r); setView('form'); }} className="p-3 text-slate-300 hover:text-orange-600 rounded-2xl transition-all" title="Editar"><i className="fas fa-edit"></i></button>
+                                <button onClick={() => handleDelete(r.id)} className="p-3 text-slate-300 hover:text-red-500 rounded-2xl transition-all" title="Excluir"><i className="fas fa-trash-alt"></i></button>
                              </div>
                           </td>
                         </tr>

@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MaintenanceRecord, MaintenanceStatus, Municipality, ServiceType, MaintenanceNature, MaintenanceStage, MaintenanceImage } from '../types';
-import { analyzeMaintenanceImage } from '../services/geminiService';
+import { analyzeMaintenanceImage, generateImageWithAI } from '../services/geminiService';
 import { SERVICE_TEMPLATES } from '../constants';
 
 interface FormProps {
@@ -33,6 +33,7 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
   const [customTitle, setCustomTitle] = useState('');
   const [customNature, setCustomNature] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const [activeImagePicker, setActiveImagePicker] = useState<{ stageId: string, slot: 'beforeImage' | 'duringImage' | 'afterImage' } | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -77,32 +78,24 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
     }));
   };
 
-  const handleImageSlotChange = async (e: React.ChangeEvent<HTMLInputElement>, stageId: string, slot: 'beforeImage' | 'duringImage' | 'afterImage') => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-      
-      const newImage: MaintenanceImage = {
-        id: 'img-' + Math.random().toString(36).substr(2, 9),
-        data: base64
-      };
+  const processAndSaveImage = async (base64: string, stageId: string, slot: 'beforeImage' | 'duringImage' | 'afterImage') => {
+    const newImage: MaintenanceImage = {
+      id: 'img-' + Math.random().toString(36).substr(2, 9),
+      data: base64
+    };
 
-      updateStage(stageId, { [slot]: newImage });
-      
-      // AI Analysis Trigger
-      setAnalyzing(true);
-      try {
-        const aiResult = await analyzeMaintenanceImage(base64, "Foto do slot " + slot);
-        setFormData(prev => ({ ...prev, aiNotes: aiResult }));
-      } catch (err) {
-        console.error("Erro na análise IA", err);
-      } finally {
-        setAnalyzing(false);
-      }
+    updateStage(stageId, { [slot]: newImage });
+    setActiveImagePicker(null);
+    
+    // AI Analysis Trigger
+    setAnalyzing(true);
+    try {
+      const aiResult = await analyzeMaintenanceImage(base64, "Foto do slot " + slot);
+      setFormData(prev => ({ ...prev, aiNotes: aiResult }));
+    } catch (err) {
+      console.error("Erro na análise IA", err);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -119,6 +112,174 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
       finalData.nature = customNature || 'Natureza não especificada';
     }
     onSave(finalData);
+  };
+
+  const ImagePickerModal = () => {
+    const [mode, setMode] = useState<'options' | 'camera' | 'ai'>('options');
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setIsStreaming(true);
+        }
+      } catch (err) {
+        alert("Erro ao acessar a câmera. Verifique as permissões.");
+      }
+    };
+
+    const capturePhoto = () => {
+      if (videoRef.current) {
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(videoRef.current, 0, 0);
+        const data = canvas.toDataURL('image/jpeg');
+        stopCamera();
+        if (activeImagePicker) processAndSaveImage(data, activeImagePicker.stageId, activeImagePicker.slot);
+      }
+    };
+
+    const stopCamera = () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        setIsStreaming(false);
+      }
+    };
+
+    const generateAI = async () => {
+      if (!aiPrompt) return;
+      setIsGenerating(true);
+      try {
+        const data = await generateImageWithAI(aiPrompt);
+        if (activeImagePicker) processAndSaveImage(data, activeImagePicker.stageId, activeImagePicker.slot);
+      } catch (err) {
+        alert("Erro ao gerar imagem com IA.");
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-[110] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-fade-in border border-white/20">
+          <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50">
+            <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">Adicionar Evidência</h3>
+            <button onClick={() => { stopCamera(); setActiveImagePicker(null); }} className="text-slate-400 hover:text-slate-600">
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="p-8">
+            {mode === 'options' && (
+              <div className="grid grid-cols-1 gap-4">
+                <label className="flex items-center p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl hover:border-orange-500 hover:bg-orange-50 cursor-pointer transition-all group">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mr-4 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                    <i className="fas fa-upload text-xl"></i>
+                  </div>
+                  <div className="flex-grow">
+                    <span className="block font-black text-slate-800 text-sm">Upload de Arquivo</span>
+                    <span className="text-[10px] text-slate-400 font-bold">Galeria ou arquivos locais</span>
+                  </div>
+                  <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const base64 = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(file);
+                      });
+                      if (activeImagePicker) processAndSaveImage(base64, activeImagePicker.stageId, activeImagePicker.slot);
+                    }
+                  }} />
+                </label>
+
+                <button onClick={() => { setMode('camera'); startCamera(); }} className="flex items-center p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl hover:border-orange-500 hover:bg-orange-50 cursor-pointer transition-all group text-left w-full">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mr-4 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                    <i className="fas fa-camera text-xl"></i>
+                  </div>
+                  <div className="flex-grow">
+                    <span className="block font-black text-slate-800 text-sm">Usar Câmera</span>
+                    <span className="text-[10px] text-slate-400 font-bold">Capturar em tempo real</span>
+                  </div>
+                </button>
+
+                <button onClick={() => setMode('ai')} className="flex items-center p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl hover:border-orange-500 hover:bg-orange-50 cursor-pointer transition-all group text-left w-full">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mr-4 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                    <i className="fas fa-robot text-xl"></i>
+                  </div>
+                  <div className="flex-grow">
+                    <span className="block font-black text-slate-800 text-sm">Gerar com IA</span>
+                    <span className="text-[10px] text-slate-400 font-bold">Criar imagem via prompt</span>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {mode === 'camera' && (
+              <div className="space-y-6">
+                <div className="relative aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-50">
+                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                  {!isStreaming && (
+                    <div className="absolute inset-0 flex items-center justify-center text-white/50">
+                      <i className="fas fa-circle-notch fa-spin text-4xl"></i>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-center space-x-4">
+                  <button onClick={() => { stopCamera(); setMode('options'); }} className="px-6 py-3 text-slate-400 font-black text-xs uppercase tracking-widest">Voltar</button>
+                  <button onClick={capturePhoto} className="px-10 py-4 bg-orange-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-600/20 active:scale-95">
+                    <i className="fas fa-shutter-speed mr-2"></i> Capturar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {mode === 'ai' && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Descreva a imagem desejada</label>
+                  <textarea 
+                    className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none text-sm font-medium transition-all"
+                    placeholder="Ex: Foto de um transformador trifásico com cabos conectados e barramento limpo..."
+                    rows={4}
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                  />
+                </div>
+                <div className="flex justify-center space-x-4">
+                  <button onClick={() => setMode('options')} className="px-6 py-3 text-slate-400 font-black text-xs uppercase tracking-widest">Voltar</button>
+                  <button 
+                    onClick={generateAI} 
+                    disabled={isGenerating || !aiPrompt}
+                    className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50 flex items-center"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin mr-2"></i> Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-magic mr-2"></i> Gerar Imagem
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const ImageSlot = ({ label, slot, stage }: { label: string, slot: 'beforeImage' | 'duringImage' | 'afterImage', stage: MaintenanceStage }) => {
@@ -138,11 +299,14 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
             </button>
           </div>
         ) : (
-          <label className="w-full aspect-video border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-orange-300 transition-all text-slate-300 hover:text-orange-500">
+          <button 
+            type="button"
+            onClick={() => setActiveImagePicker({ stageId: stage.id, slot })}
+            className="w-full aspect-video border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-orange-300 transition-all text-slate-300 hover:text-orange-500"
+          >
             <i className="fas fa-camera text-xl mb-1"></i>
-            <span className="text-[9px] font-black uppercase">Subir Foto</span>
-            <input type="file" className="hidden" accept="image/*" onChange={e => handleImageSlotChange(e, stage.id, slot)} />
-          </label>
+            <span className="text-[9px] font-black uppercase">Adicionar</span>
+          </button>
         )}
       </div>
     );
@@ -322,6 +486,17 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
           </button>
         </div>
       </div>
+
+      {activeImagePicker && <ImagePickerModal />}
+      
+      {analyzing && (
+        <div className="fixed inset-0 z-[120] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl flex items-center space-x-4 animate-bounce">
+            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="font-black text-slate-800 text-sm uppercase tracking-widest">IA Analisando Evidência...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
