@@ -33,7 +33,13 @@ export interface Municipality {
 export interface MaintenanceImage {
   id: string;
   data: string; // Base64 string
-  description: string;
+}
+
+export interface MaintenanceStage {
+  id: string;
+  name: string; // ex: 'Antes', 'Durante', 'Depois', 'Limpeza TX'
+  description: string; // Descrição técnica específica desta etapa
+  images: MaintenanceImage[];
 }
 
 export interface MaintenanceRecord {
@@ -41,10 +47,10 @@ export interface MaintenanceRecord {
   municipalityId: string;
   title: ServiceType | string;
   nature: MaintenanceNature | string;
-  description: string; // Descrição geral do serviço
+  description: string; // Resumo geral do serviço
   date: string;
   status: MaintenanceStatus;
-  images: MaintenanceImage[];
+  stages: MaintenanceStage[];
   technician: string;
   aiNotes?: string;
 }

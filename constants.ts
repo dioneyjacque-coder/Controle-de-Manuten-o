@@ -30,14 +30,25 @@ export const INITIAL_RECORDS: MaintenanceRecord[] = [
     municipalityId: 'm1',
     title: ServiceType.TYPE_50A,
     nature: MaintenanceNature.PROGRAMMED,
-    description: SERVICE_TEMPLATES[ServiceType.TYPE_50A],
+    description: 'Manutenção preventiva semestral realizada nos ativos de alta tensão.',
     date: '2024-05-15',
     status: MaintenanceStatus.COMPLETED,
-    images: [
+    stages: [
       {
-        id: 'img-init-1',
-        data: 'https://picsum.photos/400/300?random=1',
-        description: 'Verificação inicial do transformador TX-01 antes da limpeza.'
+        id: 'stg1',
+        name: 'Antes (Estado Inicial)',
+        description: 'Verificação inicial do transformador TX-01 antes da limpeza e reaperto. Presença de fuligem nos isoladores.',
+        images: [
+          { id: 'img-init-1', data: 'https://picsum.photos/400/300?random=1' }
+        ]
+      },
+      {
+        id: 'stg2',
+        name: 'Durante (Execução)',
+        description: 'Realizado reaperto de conexões e limpeza química dos barramentos.',
+        images: [
+          { id: 'img-exec-1', data: 'https://picsum.photos/400/300?random=2' }
+        ]
       }
     ],
     technician: 'João Silva'
