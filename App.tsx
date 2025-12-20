@@ -18,14 +18,12 @@ const App: React.FC = () => {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
-  // States for Reports Filtering
   const [reportSearch, setReportSearch] = useState('');
   const [reportMun, setReportMun] = useState('');
   const [reportService, setReportService] = useState('');
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
 
-  // State for image viewer
   const [viewerData, setViewerData] = useState<{images: MaintenanceImage[], index: number} | null>(null);
 
   const filteredRecords = useMemo(() => {
@@ -171,9 +169,6 @@ const App: React.FC = () => {
                           className="w-12 h-12 rounded-xl border-2 border-white object-cover shadow-sm cursor-pointer hover:scale-110 transition-transform" 
                           alt="preview"
                         />
-                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[7px] font-black bg-black/60 text-white px-1 rounded-sm">
-                          {i === 0 ? 'A' : i === 1 ? 'D' : 'P'}
-                        </span>
                       </div>
                     ) : (
                       <div key={i} className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-[8px] text-slate-300 font-black">
@@ -200,7 +195,7 @@ const App: React.FC = () => {
             </button>
           </div>
           <button onClick={() => { setEditingRecord(record); setView('form'); }} className="bg-orange-600 text-white px-8 py-3 rounded-2xl text-xs font-black hover:bg-orange-700 transition-all shadow-lg active:scale-95">
-            <i className="fas fa-file-signature mr-2"></i> Abrir Detalhes
+            <i className="fas fa-file-signature mr-2"></i> Ver Detalhes
           </button>
         </div>
       </div>
@@ -233,7 +228,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="mt-auto pt-8 border-t border-white/10 text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center">
-          <p>Amazonas • Operacional</p>
+          <p>Amazonas • Satelital</p>
         </div>
       </nav>
 
@@ -243,7 +238,7 @@ const App: React.FC = () => {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
               <div className="space-y-2">
                 <h2 className="text-5xl font-black text-slate-950 tracking-tighter">Monitoramento Amazonas</h2>
-                <p className="text-slate-400 font-bold uppercase text-xs tracking-[0.3em]">Gestão de Alta Voltagem e Redes</p>
+                <p className="text-slate-400 font-bold uppercase text-xs tracking-[0.3em]">Base Geográfica de Ativos</p>
               </div>
               <div className="flex bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
                 <button onClick={() => setActiveTab(MaintenanceStatus.PENDING)} className={`px-8 py-3 rounded-xl text-xs font-black transition-all ${activeTab === MaintenanceStatus.PENDING ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>
@@ -259,13 +254,25 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-8">
-                <div className="flex items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                  <h3 className="text-xl font-black text-slate-900 flex items-center tracking-tight">
-                    <i className="fas fa-list-check mr-4 text-orange-600 text-2xl"></i>
-                    {filterMun ? `Registros em ${selectedMunicipality?.name}` : 'Fluxo Operacional Recente'}
-                  </h3>
+                <div className={`transition-all duration-500 ${filterMun ? 'bg-orange-600 text-white' : 'bg-white text-slate-900'} p-10 rounded-[3rem] border border-slate-100 shadow-xl flex items-center justify-between`}>
+                  <div className="flex items-center space-x-6">
+                    <div className={`${filterMun ? 'bg-white/20' : 'bg-orange-600/10'} w-20 h-20 rounded-[2rem] flex items-center justify-center transition-colors`}>
+                       <i className={`fas ${filterMun ? 'fa-location-dot' : 'fa-list-check'} text-3xl ${filterMun ? 'text-white' : 'text-orange-600'}`}></i>
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black tracking-tight">
+                        {filterMun ? `Unidade: ${selectedMunicipality?.name}` : 'Fluxo Operacional'}
+                      </h3>
+                      <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${filterMun ? 'text-orange-200' : 'text-slate-400'}`}>
+                        {filterMun ? `Localizado na Bacia do ${selectedMunicipality?.region}` : 'Todos os Ativos da Região'}
+                      </p>
+                    </div>
+                  </div>
                   {filterMun && (
-                    <button onClick={() => setFilterMun(null)} className="bg-slate-950 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors">Limpar Filtro</button>
+                    <div className="flex flex-col items-end space-y-2">
+                       <span className="bg-white/20 px-4 py-2 rounded-xl text-xs font-black">{filteredRecords.length} REGISTRO(S)</span>
+                       <button onClick={() => setFilterMun(null)} className="text-[10px] font-black uppercase border-b-2 border-white/30 hover:border-white transition-all">Ver Tudo</button>
+                    </div>
                   )}
                 </div>
 
@@ -277,7 +284,7 @@ const App: React.FC = () => {
                       <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
                          <i className="fas fa-clipboard-check text-4xl text-slate-200"></i>
                       </div>
-                      <h4 className="text-slate-400 font-black text-lg uppercase tracking-widest">Nenhuma atividade ativa</h4>
+                      <h4 className="text-slate-400 font-black text-lg uppercase tracking-widest">Sem manutenções para este filtro</h4>
                     </div>
                   )}
                 </div>
@@ -286,8 +293,8 @@ const App: React.FC = () => {
               <div className="space-y-8">
                 <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
                   <h4 className="font-black text-slate-900 mb-8 flex items-center text-lg tracking-tight">
-                    <i className="fas fa-bolt text-orange-500 mr-4"></i>
-                    Supervisão Técnica
+                    <i className="fas fa-satellite text-orange-500 mr-4"></i>
+                    Análise Regional
                   </h4>
                   <div className="grid grid-cols-1 gap-4">
                     <button onClick={handleGenerateSummary} disabled={loadingSummary} className="w-full p-6 rounded-3xl border-2 border-slate-50 hover:border-orange-200 hover:bg-orange-50 transition-all text-left flex items-center space-x-5 group active:scale-95">
@@ -299,22 +306,13 @@ const App: React.FC = () => {
                         <span className="text-[10px] text-slate-400 font-bold">Consolidado Amazonas</span>
                       </div>
                     </button>
-                    <button onClick={() => setView('reports')} className="w-full p-6 rounded-3xl border-2 border-slate-50 hover:border-red-200 hover:bg-red-50 transition-all text-left flex items-center space-x-5 group active:scale-95">
-                      <div className="bg-red-100 text-red-600 w-14 h-14 rounded-2xl flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-all">
-                        <i className="fas fa-file-powerpoint text-2xl"></i>
-                      </div>
-                      <div>
-                        <span className="block text-sm font-black text-slate-900 uppercase tracking-widest">Painel PPTX</span>
-                        <span className="text-[10px] text-slate-400 font-bold">Gerar Relatórios PPTX</span>
-                      </div>
-                    </button>
                   </div>
                 </div>
 
                 {aiSummary && (
                   <div className="bg-slate-950 text-slate-200 p-10 rounded-[3rem] shadow-2xl animate-fade-in border border-white/5 relative">
                     <div className="flex justify-between items-center mb-8">
-                       <h4 className="font-black text-white text-[10px] uppercase tracking-[0.3em]">Auditoria de Inteligência</h4>
+                       <h4 className="font-black text-white text-[10px] uppercase tracking-[0.3em]">Relatório Executivo IA</h4>
                        <button onClick={() => setAiSummary('')} className="text-slate-600 hover:text-white"><i className="fas fa-times"></i></button>
                     </div>
                     <p className="text-[11px] leading-relaxed font-medium italic text-slate-400">{aiSummary}</p>
@@ -363,35 +361,9 @@ const App: React.FC = () => {
                   {AMAZONAS_MUNICIPALITIES.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo de Serviço</label>
-                <select className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none" value={reportService} onChange={(e) => setReportService(e.target.value)}>
-                  <option value="">Todos</option>
-                  {Object.values(ServiceType).map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Início</label>
-                <input type="date" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold" value={reportStartDate} onChange={(e) => setReportStartDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fim</label>
-                <div className="flex gap-2">
-                  <input type="date" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold" value={reportEndDate} onChange={(e) => setReportEndDate(e.target.value)} />
-                  <button onClick={() => { setReportSearch(''); setReportMun(''); setReportService(''); setReportStartDate(''); setReportEndDate(''); }} className="bg-slate-100 text-slate-400 hover:text-red-500 p-3 rounded-2xl transition-colors"><i className="fas fa-filter-circle-xmark"></i></button>
-                </div>
-              </div>
             </div>
 
             <div className="bg-white rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden">
-              <div className="bg-slate-950 p-12 text-white flex flex-col md:flex-row md:items-center justify-between gap-8">
-                <h3 className="text-3xl font-black tracking-tight">Lista de Atividades</h3>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right"><p className="text-[10px] font-black text-slate-500 uppercase">Ações Rápidas</p><p className="text-xs font-bold text-white/70">Clique nos ícones para gerenciar</p></div>
-                  <div className="bg-red-600/20 text-red-500 w-14 h-14 rounded-2xl flex items-center justify-center border border-red-500/30"><i className="fas fa-file-powerpoint text-xl"></i></div>
-                </div>
-              </div>
-
               <div className="p-12">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">

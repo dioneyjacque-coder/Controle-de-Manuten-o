@@ -15,7 +15,6 @@ const InteractiveMap: React.FC<MapProps> = ({ onSelectMunicipality, selectedMunI
   useEffect(() => {
     if (!svgRef.current) return;
 
-    // Increased dimensions for better visibility
     const width = 1000;
     const height = 700;
     const svg = d3.select(svgRef.current)
@@ -24,34 +23,57 @@ const InteractiveMap: React.FC<MapProps> = ({ onSelectMunicipality, selectedMunI
 
     svg.selectAll('*').remove();
 
-    // Adjusted projection for better focus on Solimões, Japurá, and Juruá basins
+    // Projeção focada no coração da Amazônia ocidental
     const projection = d3.geoMercator()
-      .center([-66.5, -4.2]) 
-      .scale(4500) // Increased scale to make the map "larger"
+      .center([-66.5, -4.0]) 
+      .scale(5500) 
       .translate([width / 2, height / 2]);
 
     const colorScale = d3.scaleOrdinal()
       .domain([Region.SOLIMOES, Region.JAPURA, Region.JURUA])
-      .range(['#f97316', '#10b981', '#f59e0b']); // Orange, Emerald, Amber
+      .range(['#fb923c', '#34d399', '#fbbf24']);
 
-    // Background container
+    // Fundo Satelital Estilizado (Verde Floresta Profundo)
+    const defs = svg.append('defs');
+    const forestGradient = defs.append('radialGradient')
+      .attr('id', 'forest-bg')
+      .attr('cx', '50%')
+      .attr('cy', '50%')
+      .attr('r', '50%');
+    forestGradient.append('stop').attr('offset', '0%').attr('stop-color', '#064e3b');
+    forestGradient.append('stop').attr('offset', '100%').attr('stop-color', '#022c22');
+
     svg.append('rect')
       .attr('width', width)
       .attr('height', height)
-      .attr('fill', '#f1f5f9') // Slate 100
-      .attr('rx', 24);
+      .attr('fill', 'url(#forest-bg)')
+      .attr('rx', 32);
 
-    // Draw grid lines (subtle)
-    const graticule = d3.geoGraticule().step([1, 1]);
-    svg.append('path')
-      .datum(graticule)
-      .attr('d', d3.geoPath().projection(projection) as any)
+    // Camada de Rios (Caminhos estilizados que representam as calhas)
+    const riverData = [
+      { name: 'Solimões', points: [[-70, -4.4], [-68, -4.0], [-66, -3.8], [-63, -3.9]] },
+      { name: 'Japurá', points: [[-70, -1.5], [-68, -1.8], [-66, -2.0], [-65, -2.5]] },
+      { name: 'Juruá', points: [[-70, -7.0], [-68, -6.5], [-67, -5.5], [-66, -4.5]] }
+    ];
+
+    const lineGenerator = d3.line()
+      .x((d: any) => projection([d[0], d[1]])![0])
+      .y((d: any) => projection([d[0], d[1]])![1])
+      .curve(d3.curveBasis);
+
+    svg.selectAll('.river')
+      .data(riverData)
+      .join('path')
+      .attr('class', 'river')
+      .attr('d', (d: any) => lineGenerator(d.points))
       .attr('fill', 'none')
-      .attr('stroke', '#e2e8f0')
-      .attr('stroke-width', 0.8)
-      .attr('stroke-dasharray', '2,2');
+      .attr('stroke', '#0ea5e9')
+      .attr('stroke-width', 8)
+      .attr('stroke-linecap', 'round')
+      .attr('opacity', 0.4)
+      .attr('filter', 'blur(2px)');
 
-    // Municipality points and labels
+    // Municípios
     const points = svg.selectAll('.muni-point')
       .data(AMAZONAS_MUNICIPALITIES)
       .join('g')
@@ -62,130 +84,124 @@ const InteractiveMap: React.FC<MapProps> = ({ onSelectMunicipality, selectedMunI
     points.each(function(d) {
       const [x, y] = projection([d.lng, d.lat]) || [0, 0];
       const g = d3.select(this);
+      const isSelected = d.id === selectedMunId;
 
-      // Pulse effect for selected municipality
-      if (d.id === selectedMunId) {
+      // Glow effect
+      if (isSelected) {
         g.append('circle')
           .attr('cx', x)
           .attr('cy', y)
-          .attr('r', 20)
+          .attr('r', 25)
           .attr('fill', colorScale(d.region) as string)
-          .attr('opacity', 0.2)
+          .attr('opacity', 0.3)
           .append('animate')
-          .attr('attributeName', 'r')
-          .attr('values', '20;30;20')
-          .attr('dur', '1.5s')
+          .attr('attributeName', 'opacity')
+          .attr('values', '0.3;0.1;0.3')
+          .attr('dur', '2s')
           .attr('repeatCount', 'indefinite');
       }
 
-      // Outer ring for better visibility
+      // Base Circle
       g.append('circle')
         .attr('cx', x)
         .attr('cy', y)
-        .attr('r', d.id === selectedMunId ? 14 : 10)
-        .attr('fill', 'white')
+        .attr('r', isSelected ? 12 : 8)
+        .attr('fill', '#fff')
         .attr('stroke', colorScale(d.region) as string)
-        .attr('stroke-width', 3)
+        .attr('stroke-width', isSelected ? 4 : 2)
         .attr('class', 'transition-all duration-300');
 
-      // Inner dot
+      // Inner Dot
       g.append('circle')
         .attr('cx', x)
         .attr('cy', y)
-        .attr('r', d.id === selectedMunId ? 8 : 5)
+        .attr('r', isSelected ? 6 : 4)
         .attr('fill', colorScale(d.region) as string);
 
-      // Improved text labeling
+      // Label
       const label = g.append('text')
         .attr('x', x)
-        .attr('y', y + 25) // Position below the dot
+        .attr('y', y - 20)
         .attr('text-anchor', 'middle')
-        .style('font-size', d.id === selectedMunId ? '14px' : '12px')
-        .style('font-weight', d.id === selectedMunId ? '800' : '600')
-        .style('fill', d.id === selectedMunId ? '#1e293b' : '#475569')
+        .style('font-size', isSelected ? '14px' : '11px')
+        .style('font-weight', '900')
+        .style('fill', isSelected ? '#fff' : '#94a3b8')
+        .style('text-transform', 'uppercase')
+        .style('letter-spacing', '0.05em')
         .style('pointer-events', 'none')
         .text(d.name);
 
-      // White background for text to make it readable over lines
-      const bbox = (label.node() as SVGTextElement).getBBox();
-      g.insert('rect', 'text')
-        .attr('x', bbox.x - 4)
-        .attr('y', bbox.y - 2)
-        .attr('width', bbox.width + 8)
-        .attr('height', bbox.height + 4)
-        .attr('fill', 'white')
-        .attr('opacity', 0.7)
-        .attr('rx', 4);
+      if (isSelected) {
+        label.style('text-shadow', '0 0 10px rgba(0,0,0,0.8)');
+      }
     });
 
-    // Enhanced Legend
-    const legend = svg.append('g').attr('transform', 'translate(30, 40)');
-    const regions = [Region.SOLIMOES, Region.JAPURA, Region.JURUA];
+    // Legenda Flutuante (Glassmorphism)
+    const legend = svg.append('g').attr('transform', 'translate(40, 40)');
     
-    legend.append('text')
-      .attr('y', -15)
-      .style('font-size', '14px')
-      .style('font-weight', 'bold')
-      .style('fill', '#1e293b')
-      .text('Bacias Hidrográficas');
+    legend.append('rect')
+      .attr('width', 220)
+      .attr('height', 130)
+      .attr('rx', 20)
+      .attr('fill', 'rgba(255,255,255,0.05)')
+      .attr('stroke', 'rgba(255,255,255,0.1)')
+      .attr('backdrop-filter', 'blur(10px)');
 
-    regions.forEach((region, i) => {
-      const g = legend.append('g').attr('transform', `translate(0, ${i * 30})`);
-      g.append('rect')
-        .attr('width', 20)
-        .attr('height', 20)
-        .attr('rx', 6)
-        .attr('fill', colorScale(region) as string);
-      
+    const regions = [
+      { id: Region.SOLIMOES, label: 'Rio Solimões' },
+      { id: Region.JAPURA, label: 'Rio Japurá' },
+      { id: Region.JURUA, label: 'Rio Juruá' }
+    ];
+
+    regions.forEach((r, i) => {
+      const g = legend.append('g').attr('transform', `translate(20, ${30 + i * 35})`);
+      g.append('circle').attr('r', 6).attr('fill', colorScale(r.id) as string);
       g.append('text')
-        .attr('x', 30)
-        .attr('y', 15)
-        .style('font-size', '13px')
-        .style('font-weight', '700')
-        .style('fill', '#334155')
-        .text(region);
+        .attr('x', 20)
+        .attr('y', 5)
+        .style('fill', '#cbd5e1')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .text(r.label);
     });
 
   }, [onSelectMunicipality, selectedMunId]);
 
   return (
-    <div className="w-full bg-white rounded-3xl shadow-2xl p-4 md:p-8 border border-slate-200 overflow-hidden transition-all">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-        <div>
-          <h3 className="text-2xl font-black text-slate-800 flex items-center">
-            <i className="fas fa-map-marked-alt mr-3 text-orange-600"></i>
-            Mapa de Operações Técnicas
-          </h3>
-          <p className="text-sm text-slate-500 font-medium">Calhas dos Rios Amazonas</p>
-        </div>
-        <div className="flex bg-slate-100 p-1 rounded-xl">
-           <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Navegação Interativa</div>
-        </div>
+    <div className="w-full bg-slate-950 rounded-[3rem] shadow-2xl p-2 border-8 border-slate-900 overflow-hidden relative group">
+      <div className="absolute top-10 right-10 z-10 space-y-3 pointer-events-none">
+          <div className="bg-emerald-500/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-emerald-500/20 flex items-center space-x-3">
+             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+             <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Visão Operacional</span>
+          </div>
       </div>
-      <div className="relative border-4 border-slate-50 rounded-2xl overflow-hidden bg-slate-50">
-        <svg ref={svgRef} className="w-full h-auto min-h-[500px] md:min-h-[650px] cursor-grab active:cursor-grabbing"></svg>
+      
+      <div className="relative">
+        <svg ref={svgRef} className="w-full h-auto min-h-[600px] cursor-crosshair"></svg>
+      </div>
+
+      <div className="absolute bottom-10 left-10 right-10 flex justify-between items-center">
+        <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10 flex items-center space-x-6">
+           <div className="flex flex-col">
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Coordenadas Ativas</span>
+              <span className="text-xs font-bold text-white">Bacia Amazônica (AM)</span>
+           </div>
+           <div className="h-8 w-[1px] bg-white/10"></div>
+           <div className="flex items-center space-x-3">
+              <i className="fas fa-satellite text-orange-500"></i>
+              <span className="text-[10px] font-bold text-slate-300">Dados Geo-referenciados</span>
+           </div>
+        </div>
         
-        {/* Floating controls hint */}
-        <div className="absolute top-4 right-4 flex flex-col gap-2">
-            <div className="bg-white/90 backdrop-blur shadow-lg p-3 rounded-2xl border border-slate-200 flex items-center space-x-3">
-               <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse"></div>
-               <span className="text-xs font-bold text-slate-700">Sistema GPS Ativo</span>
-            </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-        <div className="flex items-center p-3 bg-orange-50 rounded-2xl border border-orange-100">
-          <i className="fas fa-mouse-pointer text-orange-500 mr-3"></i>
-          <span className="text-xs text-orange-700 font-bold">Clique no município para filtrar</span>
-        </div>
-        <div className="flex items-center p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
-          <i className="fas fa-search-plus text-emerald-500 mr-3"></i>
-          <span className="text-xs text-emerald-700 font-bold">Visão ampliada das calhas</span>
-        </div>
-        <div className="flex items-center p-3 bg-amber-50 rounded-2xl border border-amber-100">
-          <i className="fas fa-sync-alt text-amber-500 mr-3"></i>
-          <span className="text-xs text-amber-700 font-bold">Atualização em tempo real</span>
-        </div>
+        {selectedMunId && (
+          <button 
+            onClick={() => onSelectMunicipality('')}
+            className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-orange-500 transition-all active:scale-95 flex items-center"
+          >
+            <i className="fas fa-compress-arrows-alt mr-3"></i>
+            Resetar Visão
+          </button>
+        )}
       </div>
     </div>
   );

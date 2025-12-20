@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MaintenanceRecord, MaintenanceStatus, Municipality, ServiceType, MaintenanceNature, MaintenanceStage, MaintenanceImage } from '../types';
-import { analyzeMaintenanceImage, generateImageWithAI } from '../services/geminiService';
+import { analyzeMaintenanceImage, generateImageWithAI, improveTechnicalText } from '../services/geminiService';
 import { SERVICE_TEMPLATES } from '../constants';
 
 interface FormProps {
@@ -33,6 +33,7 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
   const [customTitle, setCustomTitle] = useState('');
   const [customNature, setCustomNature] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const [correctingId, setCorrectingId] = useState<string | null>(null);
   const [activeImagePicker, setActiveImagePicker] = useState<{ stageId: string, slot: 'beforeImage' | 'duringImage' | 'afterImage' } | null>(null);
 
   useEffect(() => {
@@ -78,6 +79,19 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
     }));
   };
 
+  const handleImproveText = async (stageId: string, currentText: string) => {
+    if (!currentText.trim()) return;
+    setCorrectingId(stageId);
+    try {
+      const improvedText = await improveTechnicalText(currentText);
+      updateStage(stageId, { description: improvedText });
+    } catch (err) {
+      console.error("Erro ao corrigir texto", err);
+    } finally {
+      setCorrectingId(null);
+    }
+  };
+
   const processAndSaveImage = async (base64: string, stageId: string, slot: 'beforeImage' | 'duringImage' | 'afterImage') => {
     const newImage: MaintenanceImage = {
       id: 'img-' + Math.random().toString(36).substr(2, 9),
@@ -87,7 +101,6 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
     updateStage(stageId, { [slot]: newImage });
     setActiveImagePicker(null);
     
-    // AI Analysis Trigger
     setAnalyzing(true);
     try {
       const aiResult = await analyzeMaintenanceImage(base64, "Foto do slot " + slot);
@@ -112,6 +125,25 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
       finalData.nature = customNature || 'Natureza não especificada';
     }
     onSave(finalData);
+  };
+
+  // Helper for simple markdown formatting buttons
+  const applyFormat = (stageId: string, currentText: string, prefix: string, suffix: string = prefix) => {
+    const textarea = document.getElementById(`desc-${stageId}`) as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = currentText.substring(start, end);
+    const newText = currentText.substring(0, start) + prefix + selectedText + suffix + currentText.substring(end);
+    
+    updateStage(stageId, { description: newText });
+    
+    // Attempt to keep selection after update
+    setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 10);
   };
 
   const ImagePickerModal = () => {
@@ -321,7 +353,7 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
           </h2>
           <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-2 flex items-center">
             <span className="w-8 h-[2px] bg-orange-500 mr-3"></span>
-            Estrutura Antes / Durante / Depois
+            Interface Word-Ready & IA Review
           </p>
         </div>
         <div className="flex bg-slate-100 p-2 rounded-2xl border border-slate-200 shadow-inner">
@@ -385,15 +417,6 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
           >
             {Object.values(ServiceType).map(type => <option key={type} value={type}>{type}</option>)}
           </select>
-          {formData.title === ServiceType.OTHER && (
-            <input 
-              type="text"
-              className="w-full p-5 border-2 border-orange-200 rounded-3xl focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none transition-all bg-orange-50 font-bold text-orange-800 mt-4 animate-fade-in shadow-sm"
-              placeholder="Especifique o serviço..."
-              value={customTitle}
-              onChange={e => setCustomTitle(e.target.value)}
-            />
-          )}
         </div>
         <div className="space-y-3">
           <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest">Natureza do Serviço</label>
@@ -404,15 +427,6 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
           >
             {Object.values(MaintenanceNature).map(nature => <option key={nature} value={nature}>{nature}</option>)}
           </select>
-          {formData.nature === MaintenanceNature.OTHER && (
-            <input 
-              type="text"
-              className="w-full p-5 border-2 border-orange-200 rounded-3xl focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none transition-all bg-orange-50 font-bold text-orange-800 mt-4 animate-fade-in shadow-sm"
-              placeholder="Especifique a natureza..."
-              value={customNature}
-              onChange={e => setCustomNature(e.target.value)}
-            />
-          )}
         </div>
       </div>
 
@@ -448,11 +462,59 @@ const MaintenanceForm: React.FC<FormProps> = ({ municipalities, onSave, onCancel
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                   <div className="space-y-2">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Relatório Técnico da Etapa</label>
+                   <div className="space-y-0">
+                      <div className="flex items-center justify-between bg-slate-100 p-3 rounded-t-3xl border-2 border-slate-50 border-b-0">
+                         <div className="flex space-x-2">
+                            <button 
+                                type="button"
+                                onClick={() => applyFormat(stage.id, stage.description, '**')}
+                                className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-xs font-bold hover:bg-slate-50"
+                                title="Negrito"
+                            >
+                                <i className="fas fa-bold"></i>
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => applyFormat(stage.id, stage.description, '_')}
+                                className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-xs italic font-serif hover:bg-slate-50"
+                                title="Itálico"
+                            >
+                                <i className="fas fa-italic"></i>
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => applyFormat(stage.id, stage.description, '\n- ')}
+                                className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-xs hover:bg-slate-50"
+                                title="Lista"
+                            >
+                                <i className="fas fa-list-ul"></i>
+                            </button>
+                         </div>
+                         <button 
+                            type="button"
+                            onClick={() => handleImproveText(stage.id, stage.description)}
+                            disabled={correctingId === stage.id || !stage.description}
+                            className={`flex items-center space-x-2 px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${correctingId === stage.id ? 'bg-orange-600 text-white' : 'bg-white text-orange-600 border border-orange-200 hover:bg-orange-50'}`}
+                         >
+                            {correctingId === stage.id ? (
+                                <>
+                                    <i className="fas fa-spinner fa-spin"></i>
+                                    <span>Revisando...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fas fa-wand-magic-sparkles"></i>
+                                    <span>Revisão Técnica IA</span>
+                                </>
+                            )}
+                         </button>
+                      </div>
                       <textarea 
-                        className="w-full p-5 border-2 border-slate-50 rounded-3xl focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none h-40 text-sm font-medium bg-slate-50 shadow-inner"
-                        placeholder="Descreva o procedimento técnico realizado..."
+                        id={`desc-${stage.id}`}
+                        spellCheck="true"
+                        lang="pt-BR"
+                        className="w-full p-5 border-2 border-slate-50 rounded-b-3xl focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none h-40 text-sm font-medium bg-slate-50 shadow-inner resize-none"
+                        placeholder="Descreva o procedimento técnico realizado (Ex: limpeza de barramento, troca de isolador...)"
                         value={stage.description}
                         onChange={e => updateStage(stage.id, { description: e.target.value })}
                       ></textarea>
