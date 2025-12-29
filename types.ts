@@ -17,9 +17,9 @@ export enum ServiceType {
 }
 
 export enum MaintenanceNature {
-  PROGRAMMED = 'Programada',
-  EMERGENCY = 'Emergencial',
-  OTHER = 'Outro'
+  PREVENTIVE_PROGRAMMED = 'Manutenção Preventiva Programada',
+  CORRECTIVE_PROGRAMMED = 'Manutenção Corretiva Programada',
+  CORRECTIVE_EMERGENCY = 'Manutenção Corretiva Emergencial'
 }
 
 export interface Municipality {
@@ -37,8 +37,8 @@ export interface MaintenanceImage {
 
 export interface MaintenanceStage {
   id: string;
-  name: string; // ex: 'Antes', 'Durante', 'Depois', 'Limpeza TX'
-  description: string; // Descrição técnica específica desta etapa
+  name: string; 
+  description: string; 
   beforeImage?: MaintenanceImage;
   duringImage?: MaintenanceImage;
   afterImage?: MaintenanceImage;
@@ -49,12 +49,14 @@ export interface MaintenanceRecord {
   municipalityId: string;
   title: ServiceType | string;
   nature: MaintenanceNature | string;
-  description: string; // Resumo geral do serviço
+  description: string; 
   date: string;
   status: MaintenanceStatus;
   stages: MaintenanceStage[];
   technician: string;
   aiNotes?: string;
+  isLegacy?: boolean;
+  legacyFileName?: string;
 }
 
 export interface AppState {

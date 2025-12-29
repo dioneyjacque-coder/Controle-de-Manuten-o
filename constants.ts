@@ -29,7 +29,7 @@ export const INITIAL_RECORDS: MaintenanceRecord[] = [
     id: 'rec1',
     municipalityId: 'm1',
     title: ServiceType.TYPE_50A,
-    nature: MaintenanceNature.PROGRAMMED,
+    nature: MaintenanceNature.PREVENTIVE_PROGRAMMED,
     description: 'Manutenção preventiva semestral realizada nos ativos de alta tensão em Tabatinga.',
     date: '2024-05-15',
     status: MaintenanceStatus.COMPLETED,

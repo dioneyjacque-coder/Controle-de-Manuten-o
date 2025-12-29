@@ -4,26 +4,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 // Create a new instance for each service call to ensure the latest API key is used
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const analyzeMaintenanceImage = async (base64Image: string, description: string) => {
-  const ai = getAI();
-  const prompt = `Analise esta imagem de manutenção técnica no Amazonas. 
-  Descrição fornecida: "${description}". 
-  Resuma o que foi feito tecnicamente, identifique possíveis falhas visíveis e sugira uma conclusão para o relatório do supervisor.`;
-
-  const imagePart = {
-    inlineData: {
-      mimeType: 'image/jpeg',
-      data: base64Image.split(',')[1] || base64Image,
-    },
-  };
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: { parts: [imagePart, { text: prompt }] },
-  });
-
-  return response.text;
-};
+// Função analyzeMaintenanceImage removida conforme solicitado para manter imagens 100% originais
 
 export const improveTechnicalText = async (text: string) => {
   if (!text || text.trim().length < 3) return text;
